@@ -1,0 +1,211 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+##Predicting health condition based on variables 
+```{r}
+data <- read.csv("ObesityDataSet.csv.xls", stringsAsFactors = TRUE)
+```
+
+
+#Since we have already done the correlations and summaries in Collab we already know what variables are most meaningful and which ones are not. 
+```{r}
+hist(data$Height)
+#We can see most people are between 1.6 and 1.75 
+```
+
+
+```{r}
+hist(data$Weight)
+#We can see theres a second peak between 100 and 120Kg which are most likely going to be the people clasified with overweight or obesity. 
+```
+
+#Dropping not meaningful columns before startign the model building 
+```{r}
+data <- data[, !(names(data) %in% c('CALC', 'MTRANS', 'CAEC'))]
+```
+
+
+
+```{r}
+head(data)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+#Dropping all columns that are not going to be used for the model 
+
+data <- data %>% select(-NCP)
+data <- data %>% select(-SMOKE)
+data <- data %>% select(-CH2O)
+data <- data %>% select(-TUE)
+data <- data %>% select(-SCC)
+
+```
+
+
+```{r}
+#Changing the female to 1 and male to 0 to be able to build the model 
+data$Gender <- as.character(data$Gender)  
+data$Gender <- ifelse(data$Gender == "Female", "1", data$Gender)  
+data$Gender <- ifelse(data$Gender == "Male", "0", data$Gender)  
+ 
+```
+
+
+```{r}
+#chnaging the consumption of caloric food yes to 1 and no to 0 
+data$FAVC <- as.character(data$FAVC)  
+data$FAVC <- ifelse(data$FAVC == "yes", "1", data$FAVC)  
+data$FAVC <- ifelse(data$FAVC == "no", "0", data$FAVC)  
+
+```
+
+
+```{r}
+#CHanging the results to the following 
+#'Insufficient_Weight' : 0
+#'Normal_Weight' : 1
+#'Overweight_Level_I' : 2
+#'Overweight_Level_II' : 3
+#'Obesity_Type_I' : 4
+#'Obesity_Type_II' : 5
+#'Obesity_Type_III' : 6
+
+data$NObeyesdad <- as.character(data$NObeyesdad)  
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Insufficient_Weight", "0", data$NObeyesdad)  
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Normal_Weight", "1", data$NObeyesdad) 
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Overweight_Level_I", "2", data$NObeyesdad) 
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Overweight_Level_II", "3", data$NObeyesdad)
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Obesity_Type_I", "4", data$NObeyesdad)
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Obesity_Type_II", "5", data$NObeyesdad)
+data$NObeyesdad <- ifelse(data$NObeyesdad == "Obesity_Type_III", "6", data$NObeyesdad)
+
+#data$NObeyesdad <- factor(data$NObeyesdad) 
+```
+
+
+```{r}
+#We want them as int not as factor thats why this is ## 
+#data$Age <- factor(data$Age)
+#data$Height <- factor(data$Height)
+#data$Weight <- factor(data$Weight)
+#data$FAF <- factor (data$FAF)
+#data$FCVC <- factor(data$FCVC)
+```
+
+```{r}
+#Making sure all of our variables are in the int form 
+data$Gender <- as.integer(as.character(data$Gender))
+data$Age <- as.integer(as.character(data$Age))
+#data$Height <- as.integer(as.character(data$Height))
+data$Weight <- as.integer(as.character(data$Weight))
+#data$family_history_with_overweight <- as.integer(as.character(data$family_history_with_overweight))
+data$FAVC <- as.integer(data$FAVC)
+data$FCVC <- as.integer(as.character(data$FCVC))
+data$FAF <- as.integer(as.character(data$FAF))
+
+
+data$NObeyesdad <- as.numeric(as.factor(data$NObeyesdad))
+
+```
+
+
+```{r}
+#install.packages("psych")
+library(psych)
+```
+
+```{r}
+cor(data)
+```
+
+
+#Start creating the model
+#Here we are creatign the model and selecting which variables we want to use as dependent on the end estimator 
+```{r}
+ins_modeltwo <- lm(NObeyesdad ~ Gender + Age + Height + Weight + FAF  + FAVC + FCVC,
+ data = data)
+
+ins_modeltwo
+```
+
+```{r}
+#Analyzing performance 
+summary(ins_modeltwo)
+
+#All variables seem to be significant since the value is greater than 2 as established in class. 
+
+#The multiple r square being 0.9443 means that these variables are responsible at a 94.43% of in which category each person is put into  
+```
+
+
+```{r}
+data$Age2 <- data$Age^2
+```
+
+
+```{r}
+ins_modelfin <- lm(NObeyesdad ~ Gender + Age + Age2 + Height + Weight + FAF  + FAVC + FCVC, data = data)
+```
+
+
+```{r}
+summary(ins_modelfin)
+#We can see the adjustment didnt make that much of a difference. 
+```
+
+
+
+```{r}
+#we are now going to use the model to make predictions 
+data$pred <- predict(ins_modelfin, data)
+cor(data$pred, data$NObeyesdad)
+
+
+#The mdoel is 97.22% accurate which is fairly good 
+```
+
+
+#NOW LETS PREDICT 
+#Gender = Female (1), Age(24), Height (1.91), Weight(70), FAF (2)
+```{r}
+predict(ins_modeltwo,
+        data.frame(Gender = 1, Age = 24, Height = 1.91,
+                   Weight = 70, FAF = 2 , FAVC = 1, FCVC = 2))
+```
+
+
+```{r}
+predict(ins_modeltwo,
+        data.frame(Gender = 0, Age = 24, Height = 1.89,
+                   Weight = 90, FAF = 3 , FAVC = 1, FCVC = 3))
+```
+
+#this is a ramdom example that we got from the dataset and our model predicts this individual is normal weight just like it is on the data set 
+```{r}
+predict(ins_modeltwo,
+        data.frame(Gender = 1, Age = 20, Height = 1.74,
+                   Weight = 83, FAF = 2 , FAVC = 0, FCVC = 3))
+#Considered normal weight
+```
+
+
+
+```{r}
+predict(ins_modeltwo,
+        data.frame(Gender = 0, Age = 23, Height = 1.66,
+                   Weight = 60, FAF = 1 , FAVC = 0, FCVC = 3))
+```
+
+
+
+
+
